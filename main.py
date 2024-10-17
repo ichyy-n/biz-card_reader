@@ -21,6 +21,7 @@ app.add_middleware(SessionMiddleware, secret_key= os.urandom(24))
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 client_secret = os.getenv('CLIENT_SECRET_FILE')
+webtoken = os.getenv('TOKEN')
 
 @app.post("/callback")
 async def handle_callback(request: Request):
@@ -54,7 +55,7 @@ def oauth2callback(request: Request):
     creds = flow.credentials
     
     # Save the credentials for the next run
-    with open("json_files/webtoken.json", "w") as token:
+    with open(webtoken, "w") as token:
       token.write(creds.to_json())
     
     return push_message(user_id, '連携が完了しました。画像を再送してください')

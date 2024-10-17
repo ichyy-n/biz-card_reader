@@ -13,6 +13,7 @@ load_dotenv()
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 client_secret = os.getenv('CLIENT_SECRET_FILE')
+webtoken = os.getenv('TOKEN')
 folder_ID = os.getenv('FOLDER_ID')
 sheet_id = os.getenv('SHEET_ID')
 
@@ -34,7 +35,7 @@ def create_creds():
   # The file token.json stores the user's access and refresh tokens, and is
   # created automatically when the authorization flow completes for the first
   # time.
-  creds = Credentials.from_authorized_user_file("json_files/webtoken.json", SCOPES)
+  creds = Credentials.from_authorized_user_file(webtoken, SCOPES)
   # If there are no (valid) credentials available, let the user log in.
   if not creds.valid and creds.expired and creds.refresh_token:
     creds.refresh(Request())
