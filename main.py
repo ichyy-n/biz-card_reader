@@ -49,10 +49,10 @@ def oauth2callback(request: Request):
       client_secret, scopes=SCOPES, state=state)
     flow.redirect_uri = request.url_for('oauth2callback')
     authorization_response = str(request.url)
-    push_message(user_id, f'{type(authorization_response)}')
+
     flow.fetch_token(authorization_response=authorization_response)
     creds = flow.credentials
-    push_message(user_id, 'a')
+    
     # Save the credentials for the next run
     with open("json_files/webtoken.json", "w") as token:
       token.write(creds.to_json())
