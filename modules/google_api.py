@@ -85,41 +85,4 @@ def sheets_update(dict, file_id, creds):
   ws.append_row(append_list)
 
 
-#テスト用
-def drive_upload_test(image_path,creds):
-  
-  try:
-    service = build("drive", "v3", credentials=creds)
 
-    file_metadata = {
-      "name": "download.jpeg",
-      "parents": [folder_ID]
-    }
-  
-    media = MediaFileUpload(image_path, mimetype="image/jpeg")
-    # pylint: disable=maybe-no-member
-    file = (
-        service.files()
-        .create(body=file_metadata, media_body=media, fields="id")
-        .execute()
-    )
-    file_id = file.get("id")
-    return file_id
-
-  except HttpError as error:
-    print(f"An error occurred: {error}")
-    file = None
-    
-
-if __name__ == "__main__":
-  test_json = {
-    "会社名": "aaa",
-    "部署名": "bbb",
-    "氏名": "ccc",
-    "会社住所": "ddd",
-    "電話番号": "070-",
-    "e-mailアドレス": "eee",
-    }
-  image_path = './IMG_1438.jpg'
-  file_id = drive_upload_test(image_path)
-  sheets_update(test_json, file_id)
