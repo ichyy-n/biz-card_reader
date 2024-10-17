@@ -66,7 +66,6 @@ def drive_upload(image, message_id, creds):
     file = None
     message = 'failed'
 
-
 #Googleスプレッドシートへの登録
 def sheets_update(dict, file_id, creds):
   #gspreadによる操作
