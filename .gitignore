@@ -1,8 +1,4 @@
 .env
-credentials.json
-client_secret.json
-token.json
-webtoken.json
-
+json_files/
 __pycache__/
 .DS_Store

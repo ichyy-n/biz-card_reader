@@ -33,7 +33,7 @@ async def handle_callback(request: Request):
     user_id = get_user_id(events)
     push_message(user_id, f'{request.url_for('oauth2callback')}')
     #tokenがないならGoogle認証用urlを送信
-    if not os.path.exists("webtoken.json"):
+    if not os.path.exists("json_files/webtoken.json"):
        auth_url = create_authurl(request)
        return push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
     
@@ -54,7 +54,7 @@ def oauth2callback(request: Request):
     creds = flow.credentials
     push_message(user_id, 'a')
     # Save the credentials for the next run
-    with open("webtoken.json", "w") as token:
+    with open("json_files/webtoken.json", "w") as token:
       token.write(creds.to_json())
     
     return push_message(user_id, '連携が完了しました。画像を再送してください')
