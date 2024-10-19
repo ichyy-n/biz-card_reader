@@ -1,6 +1,7 @@
 import os.path
-from dotenv import load_dotenv
+import json
 
+from dotenv import load_dotenv
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
@@ -12,14 +13,12 @@ from gspread.client import Client
 load_dotenv()
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
-client_secret = os.getenv('CLIENT_SECRET_FILE')
-webtoken = os.getenv('TOKEN')
 folder_ID = os.getenv('FOLDER_ID')
 sheet_id = os.getenv('SHEET_ID')
 
 #Google OAuth認証 token.jsonがない場合にGoogle認証用urlを生成
-def create_authurl(request):
-   flow = Flow.from_client_secrets_file(
+def create_authurl(request, client_secret):
+   flow = Flow.from_client_config(
           client_secret, SCOPES
       )
    flow.redirect_uri = request.url_for('oauth2callback')
@@ -35,7 +34,7 @@ def create_creds():
   # The file token.json stores the user's access and refresh tokens, and is
   # created automatically when the authorization flow completes for the first
   # time.
-  creds = Credentials.from_authorized_user_file(webtoken, SCOPES)
+  creds = Credentials.from_authorized_user_info(json.loads(os.getenv('TOKEN')), SCOPES)
   # If there are no (valid) credentials available, let the user log in.
   if not creds.valid and creds.expired and creds.refresh_token:
     creds.refresh(Request())

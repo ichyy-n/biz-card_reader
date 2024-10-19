@@ -75,6 +75,7 @@ def event_handler(events):
         if isinstance(event.message, ImageMessageContent):
             image_handler(event)
 
+#画像受信時の処理
 def image_handler(event):
     message_id = event.message.id
     user_id = event.source.user_id
@@ -82,7 +83,7 @@ def image_handler(event):
 
     reply_message(event.reply_token, '画像を受け付けました')
     
-    #送信された画像データの取得（バイナリデータ）
+    #画像データの取得（バイナリデータ）
     try:    
         image_content = line_bot_api_blob.get_message_content(message_id)
     except Exception as e:
