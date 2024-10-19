@@ -32,7 +32,6 @@ def read_image(image_content):
                 ]
             },   
         ],
-        #max_tokens= 300,
     )
 
     return response.choices[0].message.content  #json型(文字列)
