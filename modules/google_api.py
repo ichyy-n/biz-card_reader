@@ -18,7 +18,7 @@ sheet_id = os.getenv('SHEET_ID')
 
 #Google OAuth認証 token.jsonがない場合にGoogle認証用urlを生成
 def create_authurl(request, client_secret):
-   flow = Flow.from_client_config(
+   flow = Flow.from_client_secrets_file(
           client_secret, SCOPES
       )
    flow.redirect_uri = request.url_for('oauth2callback')

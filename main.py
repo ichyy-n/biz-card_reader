@@ -26,7 +26,7 @@ app.add_middleware(SessionMiddleware, secret_key= os.urandom(24))
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 #Client Secretを辞書型として読み込み
-client_secret = json.loads(os.getenv('CLIENT_SECRET'))
+client_secret = os.getenv('CLIENT_SECRET_PATH')
 
 @app.post("/callback")
 async def handle_callback(request: Request):
@@ -51,7 +51,7 @@ async def handle_callback(request: Request):
 @app.get("/oauth2callback")
 def oauth2callback(request: Request):
     state = request.session.get('state')
-    flow = Flow.from_client_config(
+    flow = Flow.from_client_secrets_file(
       client_secret, scopes=SCOPES, state=state)
     flow.redirect_uri = request.url_for('oauth2callback')
     authorization_response = str(request.url)
