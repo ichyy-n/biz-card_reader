@@ -34,9 +34,9 @@ async def handle_callback(request: Request):
     
     global user_id
     user_id = get_user_id(events)
-
+    print(json.loads(os.getenv('TOKEN')))
     #tokenがないならGoogle認証用urlを送信
-    if not os.getenv('TOKEN') or not json.loads(os.getenv('TOKEN'))['refresh_token']:
+    if not os.getenv('TOKEN'):
         auth_url = create_authurl(request, client_secret)
         return push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
     
