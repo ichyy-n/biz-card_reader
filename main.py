@@ -16,6 +16,7 @@ from modules.google_api import(
     create_authurl
 )
 
+load_dotenv()
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key= os.urandom(24))
 
@@ -34,7 +35,7 @@ async def handle_callback(request: Request):
     
     global user_id
     user_id = get_user_id(events)
-    print(json.loads(os.getenv('TOKEN')))
+
     #tokenがないならGoogle認証用urlを送信
     if not os.getenv('TOKEN'):
         auth_url = create_authurl(request, client_secret)
