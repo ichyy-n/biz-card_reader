@@ -18,6 +18,11 @@ sheet_id = os.getenv('SHEET_ID')
 
 #Google OAuth認証 token.jsonがない場合にGoogle認証用urlを生成
 def create_authurl(request, client_secret):
+   if 'credentials' in request.session:
+     credentials = Credentials(**request.session['credentials'])
+     request.post('https://oauth2.googleapis.com/revoke',
+                  params={'token': credentials.token},
+                  headers = {'content-type': 'application/x-www-form-urlencoded'})
    flow = Flow.from_client_secrets_file(
           client_secret, SCOPES
       )

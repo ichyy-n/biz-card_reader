@@ -1,4 +1,4 @@
-import os
+import os, json
 
 from dotenv import load_dotenv
 from fastapi import Request, FastAPI
@@ -36,10 +36,9 @@ async def handle_callback(request: Request):
     user_id = get_user_id(events)
 
     #tokenがないならGoogle認証用urlを送信
-    if not os.getenv('TOKEN'):
-       request.session.clear()
-       auth_url = create_authurl(request, client_secret)
-       return push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
+    if not os.getenv('TOKEN') or not json.loads(os.getenv('TOKEN'))['refresh_token']:
+        auth_url = create_authurl(request, client_secret)
+        return push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
     
     event_handler(events)
 
