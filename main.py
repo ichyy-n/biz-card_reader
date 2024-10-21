@@ -67,7 +67,8 @@ def oauth2callback(request: Request):
 
 @app.get("/")
 def root():
-    return create_creds()
+    create_creds()
+    return
     
 
 
