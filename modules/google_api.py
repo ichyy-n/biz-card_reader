@@ -40,6 +40,7 @@ def create_creds():
   # created automatically when the authorization flow completes for the first
   # time.
   creds = Credentials.from_authorized_user_info(json.loads(os.getenv('TOKEN')), SCOPES)
+  os.environ['TOKEN'] = creds.to_json()
   #creds = Credentials.from_authorized_user_file('./token.json', SCOPES)
   # If there are no (valid) credentials available, let the user log in.
   if not creds.valid and creds.expired and creds.refresh_token:
