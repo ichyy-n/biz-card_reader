@@ -1,5 +1,4 @@
 import os
-import json
 
 from dotenv import load_dotenv
 from fastapi import Request, FastAPI
@@ -17,9 +16,6 @@ from modules.google_api import(
     create_authurl
 )
 
-load_dotenv()
-
-#alg = 'vdu'
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key= os.urandom(24))
 
@@ -41,6 +37,7 @@ async def handle_callback(request: Request):
 
     #tokenがないならGoogle認証用urlを送信
     if not os.getenv('TOKEN'):
+       request.session.clear()
        auth_url = create_authurl(request, client_secret)
        return push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
     
