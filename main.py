@@ -67,7 +67,8 @@ def oauth2callback(request: Request):
 
 @app.get("/")
 def root():
-    create_creds()
+    if os.getenv('TOKEN'):
+        create_creds()
     return
     
 
