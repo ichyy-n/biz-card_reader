@@ -13,10 +13,11 @@ from modules.line_api import(
 )
 from modules.gpt_api import read_image
 from modules.google_api import( 
-    create_authurl
+    create_authurl,
+    create_creds
 )
 
-load_dotenv()
+
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key= os.urandom(24))
 
@@ -66,7 +67,7 @@ def oauth2callback(request: Request):
 
 @app.get("/")
 def root():
-    return "hello"
+    return create_creds()
     
 
 
