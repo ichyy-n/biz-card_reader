@@ -1,94 +1,95 @@
 aenum==3.1.15
 aiohappyeyeballs==2.4.0
 aiohttp==3.10.5
-aiosignal @ file:///home/conda/feedstock_root/build_artifacts/aiosignal_1667935791922/work
-annotated-types @ file:///home/conda/feedstock_root/build_artifacts/annotated-types_1716290248287/work
-anyio @ file:///home/conda/feedstock_root/build_artifacts/anyio_1717693030552/work
-attrs @ file:///home/conda/feedstock_root/build_artifacts/attrs_1722977137225/work
-blinker @ file:///home/conda/feedstock_root/build_artifacts/blinker_1715091184126/work
-Brotli @ file:///Users/runner/miniforge3/conda-bld/brotli-split_1695989934239/work
-cachetools @ file:///home/conda/feedstock_root/build_artifacts/cachetools_1724028158384/work
-certifi @ file:///home/conda/feedstock_root/build_artifacts/certifi_1725278078093/work/certifi
-cffi @ file:///Users/runner/miniforge3/conda-bld/cffi_1723018403630/work
-charset-normalizer @ file:///home/conda/feedstock_root/build_artifacts/charset-normalizer_1698833585322/work
-click @ file:///home/conda/feedstock_root/build_artifacts/click_1692311806742/work
-colorama @ file:///home/conda/feedstock_root/build_artifacts/colorama_1666700638685/work
-cryptography @ file:///Users/runner/miniforge3/conda-bld/cryptography-split_1725443126321/work
+aiosignal==1.3.1
+annotated-types==0.7.0
+anyio==4.4.0
+attrs==24.2.0
+blinker==1.8.2
+Brotli==1.1.0
+cachetools==5.5.0
+certifi==2024.8.30
+cffi==1.17.0
+charset-normalizer==3.3.2
+click==8.1.7
+colorama==0.4.6
+cryptography==43.0.1
 Deprecated==1.2.14
-distro @ file:///home/conda/feedstock_root/build_artifacts/distro_1704321475663/work
-dnspython @ file:///home/conda/feedstock_root/build_artifacts/dnspython_1709190728464/work
+distro==1.9.0
+dnspython==2.6.1
 docopt==0.6.2
-email_validator @ file:///home/conda/feedstock_root/build_artifacts/email-validator-meta_1718984626658/work
-exceptiongroup @ file:///home/conda/feedstock_root/build_artifacts/exceptiongroup_1720869315914/work
-fastapi @ file:///home/conda/feedstock_root/build_artifacts/fastapi_1723774251000/work
-fastapi-cli @ file:///home/conda/feedstock_root/build_artifacts/fastapi-cli_1722597621840/work
-frozenlist @ file:///Users/runner/miniforge3/conda-bld/frozenlist_1725395673131/work
+email_validator==2.2.0
+exceptiongroup==1.2.2
+fastapi==0.112.1
+fastapi-cli==0.0.5
+frozenlist==1.4.1
 future==1.0.0
-google-api-core @ file:///home/conda/feedstock_root/build_artifacts/google-api-core-split_1727292191561/work
-google-api-python-client @ file:///home/conda/feedstock_root/build_artifacts/google-api-python-client_1727234896374/work
-google-auth @ file:///home/conda/feedstock_root/build_artifacts/google-auth_1726832896641/work
-google-auth-httplib2 @ file:///home/conda/feedstock_root/build_artifacts/google-auth-httplib2_1702435542843/work
-google-auth-oauthlib @ file:///home/conda/feedstock_root/build_artifacts/google-auth-oauthlib_1720491913628/work
-googleapis-common-protos @ file:///home/conda/feedstock_root/build_artifacts/googleapis-common-protos-feedstock_1724834223554/work
-greenlet @ file:///Users/runner/miniforge3/conda-bld/greenlet_1703201714305/work
-gspread @ file:///home/conda/feedstock_root/build_artifacts/gspread_1706082689815/work
-h11 @ file:///home/conda/feedstock_root/build_artifacts/h11_1664132893548/work
-h2 @ file:///home/conda/feedstock_root/build_artifacts/h2_1634280454336/work
+google-api-core==2.20.0
+google-api-python-client==2.147.0
+google-auth==2.35.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.1
+googleapis-common-protos==1.65.0
+greenlet==3.0.3
+gspread==5.12.4
+h11==0.14.0
+h2==4.1.0
 hpack==4.0.0
-httpcore @ file:///home/conda/feedstock_root/build_artifacts/httpcore_1711596990900/work
-httplib2 @ file:///home/conda/feedstock_root/build_artifacts/httplib2_1679483503307/work
-httpx @ file:///home/conda/feedstock_root/build_artifacts/httpx_1708530890843/work
-hyperframe @ file:///home/conda/feedstock_root/build_artifacts/hyperframe_1619110129307/work
-idna @ file:///home/conda/feedstock_root/build_artifacts/idna_1713279365350/work
-itsdangerous @ file:///home/conda/feedstock_root/build_artifacts/itsdangerous_1713372668944/work
-Jinja2 @ file:///home/conda/feedstock_root/build_artifacts/jinja2_1715127149914/work
-jiter @ file:///Users/runner/miniforge3/conda-bld/jiter_1725346812925/work
+httpcore==1.0.5
+httplib2==0.22.0
+httpx==0.27.0
+hyperframe==6.0.1
+idna==3.7
+itsdangerous==2.2.0
+Jinja2==3.1.4
+jiter==0.5.0
 line-bot-sdk==3.12.0
-markdown-it-py @ file:///home/conda/feedstock_root/build_artifacts/markdown-it-py_1686175045316/work
-MarkupSafe @ file:///Users/runner/miniforge3/conda-bld/markupsafe_1706900163039/work
-mdurl @ file:///home/conda/feedstock_root/build_artifacts/mdurl_1704317613764/work
-multidict @ file:///Users/runner/miniforge3/conda-bld/multidict_1725953661028/work
-oauthlib @ file:///home/conda/feedstock_root/build_artifacts/oauthlib_1666056362788/work
-openai @ file:///home/conda/feedstock_root/build_artifacts/openai_1726875276989/work
-pillow @ file:///Users/runner/miniforge3/conda-bld/pillow_1726075096567/work
+markdown-it-py==3.0.0
+MarkupSafe==2.1.5
+mdurl==0.1.2
+multidict==6.1.0
+oauthlib==3.2.2
+openai==1.47.0
+pillow==10.4.0
+pip==24.2
 pipreqs==0.4.13
-proto-plus @ file:///home/conda/feedstock_root/build_artifacts/proto-plus_1702003338643/work
+proto-plus==1.23.0
 protobuf==4.25.3
-psycopg2 @ file:///Users/runner/miniforge3/conda-bld/psycopg2-split_1727892638049/work
-pyasn1 @ file:///home/conda/feedstock_root/build_artifacts/pyasn1_1726839225972/work
-pyasn1_modules @ file:///home/conda/feedstock_root/build_artifacts/pyasn1-modules_1726029546107/work
-pycparser @ file:///home/conda/feedstock_root/build_artifacts/pycparser_1711811537435/work
-pydantic @ file:///home/conda/feedstock_root/build_artifacts/pydantic_1720293063581/work
-pydantic_core @ file:///Users/runner/miniforge3/conda-bld/pydantic-core_1720041256216/work
-Pygments @ file:///home/conda/feedstock_root/build_artifacts/pygments_1714846767233/work
-PyJWT @ file:///home/conda/feedstock_root/build_artifacts/pyjwt_1722701264352/work
-pyOpenSSL @ file:///home/conda/feedstock_root/build_artifacts/pyopenssl_1722587090966/work
-pyparsing @ file:///home/conda/feedstock_root/build_artifacts/pyparsing_1724616129934/work
-PySocks @ file:///home/conda/feedstock_root/build_artifacts/pysocks_1661604839144/work
+psycopg2==2.9.9
+pyasn1==0.6.1
+pyasn1_modules==0.4.1
+pycparser==2.22
+pydantic==2.8.2
+pydantic_core==2.20.1
+Pygments==2.18.0
+PyJWT==2.9.0
+pyOpenSSL==24.2.1
+pyparsing==3.1.4
+PySocks==1.7.1
 python-dateutil==2.9.0.post0
-python-dotenv @ file:///home/conda/feedstock_root/build_artifacts/python-dotenv-split_1706018097647/work
-python-multipart @ file:///home/conda/feedstock_root/build_artifacts/python-multipart_1707760088566/work
-pyu2f @ file:///home/conda/feedstock_root/build_artifacts/pyu2f_1604248910016/work
-requests @ file:///home/conda/feedstock_root/build_artifacts/requests_1717057054362/work
-requests-oauthlib @ file:///home/conda/feedstock_root/build_artifacts/requests-oauthlib_1711290127547/work
-rich @ file:///home/conda/feedstock_root/build_artifacts/rich-split_1709150387247/work/dist
-rsa @ file:///home/conda/feedstock_root/build_artifacts/rsa_1658328885051/work
+python-dotenv==1.0.1
+python-multipart==0.0.9
+pyu2f==0.1.5
+requests==2.32.3
+requests-oauthlib==2.0.0
+rich==13.7.1
+rsa==4.9
 setuptools==72.1.0
-shellingham @ file:///home/conda/feedstock_root/build_artifacts/shellingham_1698144360966/work
-six @ file:///home/conda/feedstock_root/build_artifacts/six_1620240208055/work
-sniffio @ file:///home/conda/feedstock_root/build_artifacts/sniffio_1708952932303/work
-SQLAlchemy @ file:///Users/runner/miniforge3/conda-bld/sqlalchemy_1722927091610/work
-sqlmodel @ file:///home/conda/feedstock_root/build_artifacts/sqlmodel_1725127944207/work
-starlette @ file:///home/conda/feedstock_root/build_artifacts/starlette-recipe_1722370579855/work
-tqdm @ file:///home/conda/feedstock_root/build_artifacts/tqdm_1722737464726/work
+shellingham==1.5.4
+six==1.16.0
+sniffio==1.3.1
+SQLAlchemy==2.0.32
+sqlmodel==0.0.22
+starlette==0.38.2
+tqdm==4.66.5
 typer==0.12.3
 typer-slim==0.12.3
-typing_extensions @ file:///home/conda/feedstock_root/build_artifacts/typing_extensions_1717802530399/work
-uritemplate @ file:///home/conda/feedstock_root/build_artifacts/uritemplate_1634152692041/work
-urllib3 @ file:///home/conda/feedstock_root/build_artifacts/urllib3_1719391292974/work
-uvicorn @ file:///Users/runner/miniforge3/conda-bld/uvicorn-split_1723660024874/work
+typing_extensions==4.12.2
+uritemplate==4.1.1
+urllib3==2.2.2
+uvicorn==0.30.6
 wheel==0.44.0
 wrapt==1.16.0
 yarg==0.1.9
-yarl @ file:///Users/runner/miniforge3/conda-bld/yarl_1727511162639/work
+yarl==1.13.1
 zstandard==0.23.0
