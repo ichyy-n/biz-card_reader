@@ -44,6 +44,7 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
     global user_id
     user_id = get_user_id(events)
     token = db.get(User, 1)
+    print(type(token))
     #tokenがないならGoogle認証用urlを送信
     if token is None:
         auth_url = create_authurl(request)
