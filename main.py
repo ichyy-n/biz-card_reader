@@ -1,7 +1,7 @@
-import os, json
+import os
 
-from dotenv import load_dotenv
-from fastapi import Request, FastAPI
+from fastapi import Request, FastAPI, Depends
+from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 from google_auth_oauthlib.flow import Flow
 
@@ -11,23 +11,30 @@ from modules.line_api import(
     get_user_id,
     event_handler,
 )
-from modules.gpt_api import read_image
 from modules.google_api import( 
     create_authurl,
-    create_creds
+    SCOPES,
+    client_secret
 )
+from modules.database import Base, User, engine, sessionLocal
 
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key= os.urandom(24))
 
-# If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/drive"]
-#Client Secretを辞書型として読み込み
-client_secret = os.getenv('CLIENT_SECRET_PATH')
+#DB関連処理
+Base.metadata.create_all(engine)
+
+def get_db():
+    db = sessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 @app.post("/callback")
-async def handle_callback(request: Request):
+async def handle_callback(request: Request, user: User, db: Session = Depends(get_db)):
     signature = request.headers['X-Line-Signature']
     # get request body as text
     body = await request.body()
@@ -37,17 +44,18 @@ async def handle_callback(request: Request):
     global user_id
     user_id = get_user_id(events)
 
+    token = db.get(User, 1)
     #tokenがないならGoogle認証用urlを送信
-    if not os.getenv('TOKEN'):
-        auth_url = create_authurl(request, client_secret)
+    if token is None:
+        auth_url = create_authurl(request)
         return push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
     
-    event_handler(events)
+    event_handler(events, token)
 
     return 'OK'
 
 @app.get("/oauth2callback")
-def oauth2callback(request: Request):
+def oauth2callback(request: Request, user: User, db: Session = Depends(get_db)):
     state = request.session.get('state')
     flow = Flow.from_client_secrets_file(
       client_secret, scopes=SCOPES, state=state)
@@ -58,18 +66,15 @@ def oauth2callback(request: Request):
     creds = flow.credentials
     
     # Save the credentials for the next run
-    os.environ['TOKEN'] = creds.to_json()
-
+    new_user = User(id=1, token=creds.to_json)
+    db.add(new_user)
+    db.commit()
     # with open('./token.json', 'w') as token:
     #     token.write(creds.to_json())
 
     return push_message(user_id, '連携が完了しました。画像を再送してください')
 
-@app.get("/")
-def root():
-    if os.getenv('TOKEN'):
-        create_creds()
-    return
+
     
 
 

@@ -15,14 +15,17 @@ load_dotenv()
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 folder_ID = os.getenv('FOLDER_ID')
 sheet_id = os.getenv('SHEET_ID')
+#Client Secretを辞書型として読み込み
+client_secret = os.getenv('CLIENT_SECRET_PATH')
+
 
 #Google OAuth認証 token.jsonがない場合にGoogle認証用urlを生成
-def create_authurl(request, client_secret):
-   if 'credentials' in request.session:
-     credentials = Credentials(**request.session['credentials'])
-     request.post('https://oauth2.googleapis.com/revoke',
-                  params={'token': credentials.token},
-                  headers = {'content-type': 'application/x-www-form-urlencoded'})
+def create_authurl(request):
+  #  if 'credentials' in request.session:
+  #    credentials = Credentials(**request.session['credentials'])
+  #    request.post('https://oauth2.googleapis.com/revoke',
+  #                 params={'token': credentials.token},
+  #                 headers = {'content-type': 'application/x-www-form-urlencoded'})
    flow = Flow.from_client_secrets_file(
           client_secret, SCOPES
       )
@@ -35,17 +38,16 @@ def create_authurl(request, client_secret):
    return authorization_url
 
 #Google OAuth認証情報読み込み
-def create_creds():
+def create_creds(token):
   # The file token.json stores the user's access and refresh tokens, and is
   # created automatically when the authorization flow completes for the first
   # time.
-  creds = Credentials.from_authorized_user_info(json.loads(os.getenv('TOKEN')), SCOPES)
-  os.environ['TOKEN'] = creds.to_json()
-  #creds = Credentials.from_authorized_user_file('./token.json', SCOPES)
+  creds = Credentials.from_authorized_user_info(json.loads(token), SCOPES)
+
   # If there are no (valid) credentials available, let the user log in.
   if not creds.valid and creds.expired and creds.refresh_token:
     creds.refresh(Request())
-    os.environ['TOKEN'] = creds.to_json()
+    #os.environ['TOKEN'] = creds.to_json()
 
   return creds
 
