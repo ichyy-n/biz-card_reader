@@ -67,7 +67,7 @@ def oauth2callback(request: Request, db: Session = Depends(get_db)):
     creds = flow.credentials
     
     # Save the credentials for the next run
-    new_user = User(id=1, token=creds.to_json)
+    new_user = User(id=1, token=creds.to_json())
     db.add(new_user)
     db.commit()
     # with open('./token.json', 'w') as token:
