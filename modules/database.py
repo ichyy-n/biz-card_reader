@@ -14,6 +14,6 @@ sessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
 class User(Base):
-    __tablename__ = 'token'
+    __tablename__ = 'users'
     id = Column(Integer, primary_key=True, index=True)
     token = Column(String)
