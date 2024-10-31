@@ -34,7 +34,7 @@ def get_db():
 
 
 @app.post("/callback")
-async def handle_callback(request: Request, user: User, db: Session = Depends(get_db)):
+async def handle_callback(request: Request, db: Session = Depends(get_db)):
     signature = request.headers['X-Line-Signature']
     # get request body as text
     body = await request.body()
@@ -55,7 +55,7 @@ async def handle_callback(request: Request, user: User, db: Session = Depends(ge
     return 'OK'
 
 @app.get("/oauth2callback")
-def oauth2callback(request: Request, user: User, db: Session = Depends(get_db)):
+def oauth2callback(request: Request, db: Session = Depends(get_db)):
     state = request.session.get('state')
     flow = Flow.from_client_secrets_file(
       client_secret, scopes=SCOPES, state=state)
