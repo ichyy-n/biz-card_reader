@@ -75,7 +75,9 @@ def oauth2callback(request: Request, db: Session = Depends(get_db)):
     return push_message(user_id, '連携が完了しました。画像を再送してください')
 
 
-    
+@app.get("/")
+def root():
+    return 'OK'   
 
 
 
