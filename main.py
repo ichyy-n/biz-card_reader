@@ -49,14 +49,15 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
     global user_id
     user_id = get_user_id(events)
     
-    token_ = db.get(User, 1).token
-    token = Fernet(key).decrypt(token_).decode()
     #tokenがないならGoogle認証用urlを送信
-    if token is None:
+    if db.get(User, 1) is None:
         auth_url = create_authurl(request)
         return push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
+    else:
+        token_ = db.get(User, 1).token
+        token = Fernet(key).decrypt(token_).decode()
+        event_handler(events, token)
     
-    event_handler(events, token)
     return 'OK'
 
 
@@ -71,7 +72,7 @@ def oauth2callback(request: Request, db: Session = Depends(get_db)):
     flow.fetch_token(authorization_response=authorization_response)
     creds = flow.credentials
     token = creds.to_json()
-    
+
     # Save the credentials for the next run
     new_user = User(id=1, token=Fernet(key).encrypt(token.encode()))
     db.add(new_user)
