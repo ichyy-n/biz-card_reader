@@ -4,6 +4,8 @@ from fastapi import Request, FastAPI, Depends
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 from google_auth_oauthlib.flow import Flow
+from cryptography.fernet import Fernet
+from dotenv import load_dotenv
 
 from modules.line_api import(
     push_message,
@@ -18,6 +20,9 @@ from modules.google_api import(
 )
 from modules.database import Base, User, engine, sessionLocal
 
+#環境変数読み込み
+load_dotenv()
+key = os.getenv('CRYPT_KEY')
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key= os.urandom(24))
@@ -44,15 +49,16 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
     global user_id
     user_id = get_user_id(events)
     
-    token = db.get(User, 1).token
+    token_ = db.get(User, 1).token
+    token = Fernet(key).decrypt(token_).decode()
     #tokenがないならGoogle認証用urlを送信
     if token is None:
         auth_url = create_authurl(request)
         return push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
     
     event_handler(events, token)
-
     return 'OK'
+
 
 @app.get("/oauth2callback")
 def oauth2callback(request: Request, db: Session = Depends(get_db)):
@@ -64,9 +70,10 @@ def oauth2callback(request: Request, db: Session = Depends(get_db)):
 
     flow.fetch_token(authorization_response=authorization_response)
     creds = flow.credentials
+    token = creds.to_json()
     
     # Save the credentials for the next run
-    new_user = User(id=1, token=creds.to_json())
+    new_user = User(id=1, token=Fernet(key).encrypt(token.encode()))
     db.add(new_user)
     db.commit()
     # with open('./token.json', 'w') as token:

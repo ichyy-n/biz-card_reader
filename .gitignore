@@ -2,3 +2,4 @@
 json_files/
 __pycache__/
 .DS_Store
+create_cryptkey.py
