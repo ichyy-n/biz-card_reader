@@ -56,7 +56,7 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
     else:
         token_ = db.get(User, 1).token
         print(token_)
-        token = Fernet(key).decrypt(token_).decode()
+        token = Fernet(key).decrypt(token_.encode()).decode()
         event_handler(events, token)
     
     return 'OK'
@@ -75,7 +75,7 @@ def oauth2callback(request: Request, db: Session = Depends(get_db)):
     token = creds.to_json()
 
     # Save the credentials for the next run
-    new_user = User(id=1, token=Fernet(key).encrypt(token.encode()))
+    new_user = User(id=1, token=Fernet(key).encrypt(token.encode()).decode())
     db.add(new_user)
     db.commit()
     # with open('./token.json', 'w') as token:
