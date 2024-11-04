@@ -55,6 +55,7 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
         return push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
     else:
         token_ = db.get(User, 1).token
+        print(token_)
         token = Fernet(key).decrypt(token_).decode()
         event_handler(events, token)
     
