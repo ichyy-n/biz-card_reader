@@ -8,7 +8,7 @@ from sqlalchemy.types import String, Integer
 
 load_dotenv()
 DB_URL = os.getenv('SQL_URL')
-engine = create_engine(DB_URL)
+engine = create_engine(DB_URL, pool_pre_ping=True, pool_recycle=300)
 
 sessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
