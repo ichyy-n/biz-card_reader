@@ -66,20 +66,21 @@ def get_user_id(events):
             return event.source.user_id
 
 
-def event_handler(events, token):
+def event_handler(events, token, db):
     for event in events:
         if not isinstance(event, MessageEvent):
             continue
         if isinstance(event.message, TextMessageContent):
             reply_message(event.reply_token, '名刺画像を送信してください')
         if isinstance(event.message, ImageMessageContent):
-            image_handler(event, token)
+            image_handler(event, token, db)
+
 
 #画像受信時の処理
-def image_handler(event, token):
+def image_handler(event, token, db):
     message_id = event.message.id
     user_id = event.source.user_id
-    creds = create_creds(token)
+    creds = create_creds(token, db)
 
     reply_message(event.reply_token, '画像を受け付けました')
     

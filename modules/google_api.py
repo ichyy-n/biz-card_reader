@@ -9,8 +9,12 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
 from gspread.client import Client
+from sqlalchemy.orm import Session
+from cryptography.fernet import Fernet
+from modules.database import User
 
 load_dotenv()
+key = os.getenv('CRYPT_KEY')
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 folder_ID = os.getenv('FOLDER_ID')
@@ -38,7 +42,7 @@ def create_authurl(request):
    return authorization_url
 
 #Google OAuth認証情報読み込み
-def create_creds(token):
+def create_creds(token, db:Session):
   # The file token.json stores the user's access and refresh tokens, and is
   # created automatically when the authorization flow completes for the first
   # time.
@@ -47,6 +51,9 @@ def create_creds(token):
   # If there are no (valid) credentials available, let the user log in.
   if not creds.valid and creds.expired and creds.refresh_token:
     creds.refresh(Request())
+    token = creds.to_json()
+    user = db.query(User).filter(User.id==1).first()
+    user.token = Fernet(key).encrypt(token.encode()).decode()
     #os.environ['TOKEN'] = creds.to_json()
 
   return creds

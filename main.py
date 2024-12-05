@@ -56,7 +56,7 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
     else:
         token_ = db.get(User, 1).token
         token = Fernet(key).decrypt(token_.encode()).decode()
-        event_handler(events, token)
+        event_handler(events, token, db)
     
     return 'OK'
 
