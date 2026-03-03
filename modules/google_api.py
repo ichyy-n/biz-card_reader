@@ -1,7 +1,14 @@
 import os.path
 import json
+import logging
 
 from dotenv import load_dotenv
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
@@ -16,7 +23,10 @@ from modules.database import User
 load_dotenv()
 key = os.getenv('CRYPT_KEY')
 
-SCOPES = ["https://www.googleapis.com/auth/drive"]
+SCOPES = [
+    "https://www.googleapis.com/auth/drive.file",    # アプリが作成したファイルのみ（提案5: 最小権限化）
+    "https://www.googleapis.com/auth/spreadsheets",  # スプレッドシート操作
+]
 folder_ID = os.getenv('FOLDER_ID')
 sheet_id = os.getenv('SHEET_ID')
 #Client Secretを辞書型として読み込み
@@ -42,7 +52,7 @@ def create_authurl(request):
    return authorization_url
 
 #Google OAuth認証情報読み込み
-def create_creds(token, db:Session):
+def create_creds(token, db: Session, user_id: str):
   # The file token.json stores the user's access and refresh tokens, and is
   # created automatically when the authorization flow completes for the first
   # time.
@@ -52,9 +62,10 @@ def create_creds(token, db:Session):
   if not creds.valid and creds.expired and creds.refresh_token:
     creds.refresh(Request())
     token = creds.to_json()
-    user = db.query(User).filter(User.id==1).first()
+    user = db.query(User).filter(User.line_user_id == user_id).first()  # 提案6: user_idで検索
     user.token = Fernet(key).encrypt(token.encode()).decode()
-    #os.environ['TOKEN'] = creds.to_json()
+    db.commit()  # トークン更新を永続化（提案1: CRITICAL bugfix）
+    logger.info(f"Token refreshed for user_id={user_id}")
 
   return creds
 
@@ -79,9 +90,8 @@ def drive_upload(image, message_id, creds):
     return file_id
   
   except HttpError as error:
-    print(f"An error occurred: {error}")
-    file = None
-    message = 'failed'
+    logger.error(f"Drive upload failed for message_id={message_id}: {error}", exc_info=True)
+    raise RuntimeError(f"Drive upload failed: {error}") from error  # 提案4: 例外を投げてデータ汚染を防止
 
 #Googleスプレッドシートへの登録
 def sheets_update(dict, file_id, creds):

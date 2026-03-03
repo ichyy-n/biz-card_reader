@@ -7,7 +7,7 @@ load_dotenv()
 
 def read_image(image_content):
     base64_image = base64.b64encode(image_content).decode('utf-8') # 画像をbase64にエンコード
-    client = OpenAI(api_key=os.getenv("OPEN_API_KEY"))
+    client = OpenAI()  # OPENAI_API_KEY 環境変数を自動読み込み（提案7: 環境変数名標準化）
     schema = {
         "会社名": "string",
         "部署名": "string",
