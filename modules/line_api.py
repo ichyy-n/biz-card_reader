@@ -2,8 +2,15 @@ import os
 import sys
 import io
 import json
+import logging
 
 from dotenv import load_dotenv
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
 from fastapi import HTTPException
 from linebot.v3 import WebhookHandler, WebhookParser
 from linebot.v3.exceptions import InvalidSignatureError
@@ -66,29 +73,34 @@ def get_user_id(events):
             return event.source.user_id
 
 
-def event_handler(events, token, db):
+def event_handler(events, token, db, user_id: str):
     for event in events:
         if not isinstance(event, MessageEvent):
             continue
         if isinstance(event.message, TextMessageContent):
             reply_message(event.reply_token, '名刺画像を送信してください')
         if isinstance(event.message, ImageMessageContent):
-            image_handler(event, token, db)
+            image_handler(event, token, db, user_id)
 
+
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB（提案9: 画像サイズ制限）
 
 #画像受信時の処理
-def image_handler(event, token, db):
+def image_handler(event, token, db, user_id: str):
     message_id = event.message.id
-    user_id = event.source.user_id
-    creds = create_creds(token, db)
+    creds = create_creds(token, db, user_id)  # 提案6: user_idを渡す
 
     reply_message(event.reply_token, '画像を受け付けました')
-    
+
     #画像データの取得（バイナリデータ）
-    try:    
+    try:
         image_content = line_bot_api_blob.get_message_content(message_id)
     except Exception as e:
         return push_message(user_id, f'画像を取得できませんでした：{e}')
+
+    # サイズ制限チェック（提案9）
+    if len(image_content) > MAX_IMAGE_SIZE:
+        return push_message(user_id, f'画像サイズが大きすぎます（上限5MB）')
     #gpt4による文字読み取りと構造化
     try:
         bizcard_text = json.loads(read_image(image_content)) #文字列から辞書型に変換
