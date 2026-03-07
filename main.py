@@ -1,5 +1,6 @@
 import os
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import Request, FastAPI, Depends
 
@@ -8,6 +9,7 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
 )
 logger = logging.getLogger(__name__)
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 from google_auth_oauthlib.flow import Flow
@@ -20,7 +22,7 @@ from modules.line_api import(
     get_user_id,
     event_handler,
 )
-from modules.google_api import( 
+from modules.google_api import(
     create_authurl,
     SCOPES,
     client_secret
@@ -31,14 +33,27 @@ from modules.database import Base, User, engine, sessionLocal
 load_dotenv()
 key = os.getenv('CRYPT_KEY')
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    #DB起動時処理: 旧スキーマ検出時は自動マイグレーション
+    inspector = inspect(engine)
+    if 'users' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        if 'line_user_id' not in columns:
+            logger.warning("旧スキーマ検出: usersテーブルを再作成します")
+            with engine.begin() as conn:
+                conn.execute(text("DROP TABLE users"))
+    Base.metadata.create_all(bind=engine)
+    logger.info("DBスキーマ初期化完了")
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 session_secret = os.getenv('SESSION_SECRET_KEY')
 if not session_secret:
     raise RuntimeError("SESSION_SECRET_KEY environment variable not set")
 app.add_middleware(SessionMiddleware, secret_key=session_secret)
-
-#DB関連処理
-Base.metadata.create_all(engine)
 
 def get_db():
     db = sessionLocal()
