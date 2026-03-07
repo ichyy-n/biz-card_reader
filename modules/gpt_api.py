@@ -19,7 +19,7 @@ def read_image(image_content):
 
     #gpt-4へのリクエスト
     response = client.chat.completions.create(
-        model = 'gpt-4o',
+        model = 'gpt-5.2',
         response_format={ "type": "json_object" },
         messages=[
             {'role': 'user', 
