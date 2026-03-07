@@ -1,5 +1,6 @@
 import os.path
 import json
+import base64
 import logging
 
 from dotenv import load_dotenv
@@ -34,21 +35,22 @@ client_secret = os.getenv('CLIENT_SECRET_PATH')
 
 
 #Google OAuth認証 token.jsonがない場合にGoogle認証用urlを生成
-def create_authurl(request):
-  #  if 'credentials' in request.session:
-  #    credentials = Credentials(**request.session['credentials'])
-  #    request.post('https://oauth2.googleapis.com/revoke',
-  #                 params={'token': credentials.token},
-  #                 headers = {'content-type': 'application/x-www-form-urlencoded'})
+def create_authurl(request, user_id):
    flow = Flow.from_client_secrets_file(
           client_secret, SCOPES
       )
    flow.redirect_uri = request.url_for('oauth2callback')
-   authorization_url, state = flow.authorization_url(
-      access_type= 'offline',
-    include_granted_scopes= 'true'
-    )
-   request.session['state'] = state
+   # Encode user_id in state so it survives the webhook→browser redirect boundary.
+   # /callback is called by LINE's server (not the user's browser), so session cookies
+   # cannot be used to pass user_id to /oauth2callback.
+   state_payload = base64.urlsafe_b64encode(
+       json.dumps({"user_id": user_id}).encode()
+   ).decode()
+   authorization_url, _ = flow.authorization_url(
+      access_type='offline',
+      include_granted_scopes='true',
+      state=state_payload,
+   )
    return authorization_url
 
 #Google OAuth認証情報読み込み
