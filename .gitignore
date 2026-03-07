@@ -1,5 +1,6 @@
 .env
 json_files/
+.vscode/
 __pycache__/
 .DS_Store
 create_cryptkey.py
