@@ -18,5 +18,7 @@ class User(Base):
     __tablename__ = 'users'
     line_user_id = Column(String, primary_key=True, index=True)  # LINE user_id を主キーに（提案6: マルチユーザー対応）
     token = Column(String, nullable=False)
+    drive_folder_id = Column(String, nullable=True)    # per-user Google Drive folder (R02)
+    spreadsheet_id = Column(String, nullable=True)     # per-user Google Spreadsheet (R02)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

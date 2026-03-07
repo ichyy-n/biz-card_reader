@@ -49,6 +49,35 @@ async def lifespan(app: FastAPI):
                 conn.execute(text("DROP TABLE users"))
     Base.metadata.create_all(bind=engine)
     logger.info("DBスキーマ初期化完了")
+
+    # R02マイグレーション: 既存ユーザーにデフォルトのfolder_id/sheet_idを設定
+    # Migration only. Will be deprecated.
+    migration_folder_id = os.getenv('FOLDER_ID')
+    migration_sheet_id = os.getenv('SHEET_ID')
+    if migration_folder_id or migration_sheet_id:
+        db = sessionLocal()
+        try:
+            updated = 0
+            if migration_folder_id:
+                result = db.execute(
+                    text("UPDATE users SET drive_folder_id = :fid WHERE drive_folder_id IS NULL"),
+                    {"fid": migration_folder_id}
+                )
+                updated += result.rowcount
+            if migration_sheet_id:
+                result = db.execute(
+                    text("UPDATE users SET spreadsheet_id = :sid WHERE spreadsheet_id IS NULL"),
+                    {"sid": migration_sheet_id}
+                )
+                updated += result.rowcount
+            if updated > 0:
+                db.commit()
+                logger.info(f"R02マイグレーション完了: {updated}件更新")
+            else:
+                logger.info("R02マイグレーション: 対象レコードなし")
+        finally:
+            db.close()
+
     yield
 
 

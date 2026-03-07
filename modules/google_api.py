@@ -28,6 +28,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive.file",    # アプリが作成したファイルのみ（提案5: 最小権限化）
     "https://www.googleapis.com/auth/spreadsheets",  # スプレッドシート操作
 ]
+# Migration only. Will be deprecated.
 folder_ID = os.getenv('FOLDER_ID')
 sheet_id = os.getenv('SHEET_ID')
 #Client Secretを辞書型として読み込み
@@ -72,15 +73,40 @@ def create_creds(token, db: Session, user_id: str):
   return creds
 
 
+#per-userのGoogle Driveフォルダを自動作成
+def create_drive_folder(creds, line_user_id):
+  service = build("drive", "v3", credentials=creds)
+  file_metadata = {
+      "name": f"BizCard - {line_user_id}",
+      "mimeType": "application/vnd.google-apps.folder",
+  }
+  folder = service.files().create(body=file_metadata, fields="id").execute()
+  folder_id = folder.get("id")
+  logger.info(f"Created Drive folder for user={line_user_id}: {folder_id}")
+  return folder_id
+
+
+#per-userのGoogle Spreadsheetを自動作成
+def create_spreadsheet(creds, line_user_id):
+  service = build("sheets", "v4", credentials=creds)
+  spreadsheet_body = {
+      "properties": {"title": f"名刺リスト - {line_user_id}"},
+  }
+  spreadsheet = service.spreadsheets().create(body=spreadsheet_body, fields="spreadsheetId").execute()
+  ss_id = spreadsheet.get("spreadsheetId")
+  logger.info(f"Created Spreadsheet for user={line_user_id}: {ss_id}")
+  return ss_id
+
+
 #画像をGoogle Driveへアップロード
-def drive_upload(image, message_id, creds):
+def drive_upload(image, message_id, creds, user_folder_id):
   try:
     service = build("drive", "v3", credentials=creds)
     file_metadata = {
       "name": f"{message_id}.jpeg",
-      "parents": [folder_ID]
+      "parents": [user_folder_id]
       }
-    
+
     media = MediaIoBaseUpload(image, mimetype="image/jpeg") #BytesIo型を扱う
     file = (
         service.files()
@@ -90,23 +116,23 @@ def drive_upload(image, message_id, creds):
     file_id = file.get("id")
 
     return file_id
-  
+
   except HttpError as error:
     logger.error(f"Drive upload failed for message_id={message_id}: {error}", exc_info=True)
-    raise RuntimeError(f"Drive upload failed: {error}") from error  # 提案4: 例外を投げてデータ汚染を防止
+    raise RuntimeError(f"Drive upload failed: {error}") from error
 
 #Googleスプレッドシートへの登録
-def sheets_update(dict, file_id, creds):
+def sheets_update(dict, file_id, creds, user_sheet_id):
   #gspreadによる操作
   gc = Client(auth=creds)
-  sh = gc.open_by_key(sheet_id)
+  sh = gc.open_by_key(user_sheet_id)
   ws = sh.get_worksheet(0)
   append_list = []
-  
+
   #読み取った情報をリスト型として保存
   for i in dict.keys():
     append_list.append(dict[i])
-  
+
   #名刺画像ファイルへのリンクを追加
   append_list.append(f"https://drive.google.com/file/d/{file_id}")
   #最終行へリスト情報を追加
