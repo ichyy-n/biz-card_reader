@@ -30,11 +30,14 @@ from linebot.v3.messaging import (
 )
 
 from modules.gpt_api import read_image
-from modules.google_api import( 
+from modules.google_api import(
     create_creds,
-    drive_upload, 
+    create_drive_folder,
+    create_spreadsheet,
+    drive_upload,
     sheets_update
 )
+from modules.database import User
 
 
 load_dotenv()
@@ -88,7 +91,22 @@ MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB（提案9: 画像サイズ制限）
 #画像受信時の処理
 def image_handler(event, token, db, user_id: str):
     message_id = event.message.id
-    creds = create_creds(token, db, user_id)  # 提案6: user_idを渡す
+    creds = create_creds(token, db, user_id)
+
+    # per-userリソースの自動作成（R02: データ分離）
+    user = db.query(User).filter(User.line_user_id == user_id).first()
+    if user.drive_folder_id is None:
+        try:
+            user.drive_folder_id = create_drive_folder(creds, user_id)
+            db.commit()
+        except Exception as e:
+            return push_message(user_id, f'Google Driveフォルダの作成に失敗しました：{e}')
+    if user.spreadsheet_id is None:
+        try:
+            user.spreadsheet_id = create_spreadsheet(creds, user_id)
+            db.commit()
+        except Exception as e:
+            return push_message(user_id, f'スプレッドシートの作成に失敗しました：{e}')
 
     reply_message(event.reply_token, '画像を受け付けました')
 
@@ -108,12 +126,12 @@ def image_handler(event, token, db, user_id: str):
         return push_message(user_id, f'文字の構造化に失敗しました：{e}')
     #画像をGoogle Driveへアップロード
     try:
-        file_id = drive_upload(io.BytesIO(image_content),message_id,creds) #バイナリデータをメモリ上でファイルとして扱う
+        file_id = drive_upload(io.BytesIO(image_content), message_id, creds, user.drive_folder_id)
     except Exception as e:
         return push_message(user_id, f'画像をGoogle Driveに保存できませんでした：{e}')
     #読み取った文字データとGoogle Driveの画像リンクをスプレッドシートへ登録
     try:
-        sheets_update(bizcard_text, file_id, creds)
+        sheets_update(bizcard_text, file_id, creds, user.spreadsheet_id)
         push_message(user_id, 'データの登録が終了しました')
     except Exception as e:
         return push_message(user_id, f'Google spread sheetの更新に失敗しました：{e}')

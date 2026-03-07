@@ -12,7 +12,7 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
 )
 logger = logging.getLogger(__name__)
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect as sa_inspect, text
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 from google_auth_oauthlib.flow import Flow
@@ -39,16 +39,55 @@ key = os.getenv('CRYPT_KEY')
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    #DB起動時処理: 旧スキーマ検出時は自動マイグレーション
-    inspector = inspect(engine)
-    if 'users' in inspector.get_table_names():
+    #DB起動時処理: テーブル存在確認 + カラム追加マイグレーション（冪等）
+    inspector = sa_inspect(engine)
+    if not inspector.has_table('users'):
+        Base.metadata.create_all(bind=engine)
+        logger.info("DBスキーマ初期化完了: usersテーブル新規作成")
+    else:
         columns = [col['name'] for col in inspector.get_columns('users')]
-        if 'line_user_id' not in columns:
-            logger.warning("旧スキーマ検出: usersテーブルを再作成します")
+        added = []
+        if 'drive_folder_id' not in columns:
             with engine.begin() as conn:
-                conn.execute(text("DROP TABLE users"))
-    Base.metadata.create_all(bind=engine)
-    logger.info("DBスキーマ初期化完了")
+                conn.execute(text("ALTER TABLE users ADD COLUMN drive_folder_id VARCHAR"))
+            added.append('drive_folder_id')
+        if 'spreadsheet_id' not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN spreadsheet_id VARCHAR"))
+            added.append('spreadsheet_id')
+        if added:
+            logger.info(f"DBマイグレーション完了: カラム追加 {added}")
+        else:
+            logger.info("DBスキーマ確認完了: 変更なし")
+
+    # R02マイグレーション: 既存ユーザーにデフォルトのfolder_id/sheet_idを設定
+    # Migration only. Will be deprecated.
+    migration_folder_id = os.getenv('FOLDER_ID')
+    migration_sheet_id = os.getenv('SHEET_ID')
+    if migration_folder_id or migration_sheet_id:
+        db = sessionLocal()
+        try:
+            updated = 0
+            if migration_folder_id:
+                result = db.execute(
+                    text("UPDATE users SET drive_folder_id = :fid WHERE drive_folder_id IS NULL"),
+                    {"fid": migration_folder_id}
+                )
+                updated += result.rowcount
+            if migration_sheet_id:
+                result = db.execute(
+                    text("UPDATE users SET spreadsheet_id = :sid WHERE spreadsheet_id IS NULL"),
+                    {"sid": migration_sheet_id}
+                )
+                updated += result.rowcount
+            if updated > 0:
+                db.commit()
+                logger.info(f"R02マイグレーション完了: {updated}件更新")
+            else:
+                logger.info("R02マイグレーション: 対象レコードなし")
+        finally:
+            db.close()
+
     yield
 
 
