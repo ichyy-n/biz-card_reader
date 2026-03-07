@@ -1,8 +1,11 @@
 import os
+import base64
+import json
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Request, FastAPI, Depends
+from fastapi.responses import JSONResponse
 
 logging.basicConfig(
     level=logging.INFO,
@@ -79,8 +82,7 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
 
     #tokenがないならGoogle認証用urlを送信
     if db.get(User, user_id) is None:
-        auth_url = create_authurl(request)
-        request.session['pending_user_id'] = user_id  # セッションに保存
+        auth_url = create_authurl(request, user_id)  # pass user_id to embed in OAuth state
         return push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
     else:
         user = db.get(User, user_id)
@@ -92,10 +94,25 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/oauth2callback")
 def oauth2callback(request: Request, db: Session = Depends(get_db)):
-    user_id = request.session.get('pending_user_id')  # セッションから取得（提案2）
-    state = request.session.get('state')
-    flow = Flow.from_client_secrets_file(
-      client_secret, scopes=SCOPES, state=state)
+    # Decode user_id from OAuth state parameter.
+    # We cannot use session here because /callback is a LINE webhook (called by LINE's
+    # server, not the user's browser), so the session cookie never reaches the user's
+    # browser. Instead, user_id is embedded in the state parameter by create_authurl().
+    state_param = request.query_params.get('state', '')
+    try:
+        state_data = json.loads(base64.urlsafe_b64decode(state_param + '==').decode())
+        user_id = state_data.get('user_id')
+    except Exception:
+        user_id = None
+
+    if not user_id:
+        logger.error("user_id not found in OAuth state parameter")
+        return JSONResponse(
+            {"error": "認証セッションが無効です。LINEから再度お試しください。"},
+            status_code=400,
+        )
+
+    flow = Flow.from_client_secrets_file(client_secret, scopes=SCOPES)
     flow.redirect_uri = request.url_for('oauth2callback')
     authorization_response = str(request.url)
 
@@ -103,9 +120,13 @@ def oauth2callback(request: Request, db: Session = Depends(get_db)):
     creds = flow.credentials
     token = creds.to_json()
 
-    # Save the credentials for the next run
-    new_user = User(line_user_id=user_id, token=Fernet(key).encrypt(token.encode()).decode())
-    db.add(new_user)
+    # Upsert: update token if user already exists, create otherwise
+    user = db.query(User).filter(User.line_user_id == user_id).first()
+    if not user:
+        user = User(line_user_id=user_id, token=Fernet(key).encrypt(token.encode()).decode())
+        db.add(user)
+    else:
+        user.token = Fernet(key).encrypt(token.encode()).decode()
     db.commit()
 
     return push_message(user_id, '連携が完了しました。画像を再送してください')
