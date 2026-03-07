@@ -50,7 +50,7 @@ MarkupSafe==3.0.2
 mdurl==0.1.2
 multidict==6.7.1
 oauthlib==3.2.2
-openai==1.53.0
+openai==1.59.2
 pillow==12.1.1
 pip==26.0
 pipreqs==0.4.13
