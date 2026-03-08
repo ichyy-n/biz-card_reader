@@ -1,10 +1,13 @@
 import os
 import base64
 import json
+import hmac
+import hashlib
+import time
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Request, FastAPI, Depends
+from fastapi import Request, FastAPI, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
 logging.basicConfig(
@@ -30,7 +33,7 @@ from modules.google_api import(
     SCOPES,
     client_secret
 )
-from modules.database import Base, User, engine, sessionLocal
+from modules.database import Base, User, OAuthNonce, engine, sessionLocal
 
 #環境変数読み込み
 load_dotenv()
@@ -43,8 +46,11 @@ async def lifespan(app: FastAPI):
     inspector = sa_inspect(engine)
     if not inspector.has_table('users'):
         Base.metadata.create_all(bind=engine)
-        logger.info("DBスキーマ初期化完了: usersテーブル新規作成")
+        logger.info("DBスキーマ初期化完了: テーブル新規作成")
     else:
+        if not inspector.has_table('oauth_nonces'):
+            OAuthNonce.__table__.create(bind=engine)
+            logger.info("DBスキーマ更新: oauth_noncesテーブル作成")
         columns = [col['name'] for col in inspector.get_columns('users')]
         added = []
         if 'drive_folder_id' not in columns:
@@ -121,7 +127,7 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
 
     #tokenがないならGoogle認証用urlを送信
     if db.get(User, user_id) is None:
-        auth_url = create_authurl(request, user_id)  # pass user_id to embed in OAuth state
+        auth_url = create_authurl(request, user_id, db)  # pass user_id to embed in OAuth state
         return push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
     else:
         user = db.get(User, user_id)
@@ -131,21 +137,36 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
     return 'OK'
 
 
+def verify_oauth_state(state_param: str, db: Session) -> str:
+    try:
+        decoded = base64.urlsafe_b64decode(state_param + '==').decode()
+        payload_str, sig = decoded.rsplit(":", 1)
+        secret = os.getenv("SESSION_SECRET_KEY", "").encode()
+        expected_sig = hmac.new(secret, payload_str.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected_sig):
+            raise HTTPException(status_code=400, detail="Invalid state signature")
+        payload = json.loads(payload_str)
+        if time.time() > payload["exp"]:
+            raise HTTPException(status_code=400, detail="State expired")
+        nonce_record = db.query(OAuthNonce).filter_by(nonce=payload["nonce"]).first()
+        if not nonce_record:
+            raise HTTPException(status_code=400, detail="Invalid nonce")
+        db.delete(nonce_record)
+        db.commit()
+        return payload["user_id"]
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid state")
+
+
 @app.get("/oauth2callback")
 def oauth2callback(request: Request, db: Session = Depends(get_db)):
-    # Decode user_id from OAuth state parameter.
-    # We cannot use session here because /callback is a LINE webhook (called by LINE's
-    # server, not the user's browser), so the session cookie never reaches the user's
-    # browser. Instead, user_id is embedded in the state parameter by create_authurl().
     state_param = request.query_params.get('state', '')
     try:
-        state_data = json.loads(base64.urlsafe_b64decode(state_param + '==').decode())
-        user_id = state_data.get('user_id')
-    except Exception:
-        user_id = None
-
-    if not user_id:
-        logger.error("user_id not found in OAuth state parameter")
+        user_id = verify_oauth_state(state_param, db)
+    except HTTPException as e:
+        logger.error(f"OAuth state verification failed: {e.detail}")
         return JSONResponse(
             {"error": "認証セッションが無効です。LINEから再度お試しください。"},
             status_code=400,

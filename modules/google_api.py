@@ -1,6 +1,10 @@
 import os.path
 import json
 import base64
+import hmac
+import hashlib
+import secrets
+import time
 import logging
 
 from dotenv import load_dotenv
@@ -19,7 +23,7 @@ from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
 from gspread.client import Client
 from sqlalchemy.orm import Session
 from cryptography.fernet import Fernet
-from modules.database import User
+from modules.database import User, OAuthNonce
 
 load_dotenv()
 key = os.getenv('CRYPT_KEY')
@@ -36,23 +40,35 @@ client_secret = os.getenv('CLIENT_SECRET_PATH')
 
 
 #Google OAuth認証 token.jsonがない場合にGoogle認証用urlを生成
-def create_authurl(request, user_id):
+def create_authurl(request, user_id, db: Session):
    flow = Flow.from_client_secrets_file(
           client_secret, SCOPES
       )
    flow.redirect_uri = request.url_for('oauth2callback')
-   # Encode user_id in state so it survives the webhook→browser redirect boundary.
-   # /callback is called by LINE's server (not the user's browser), so session cookies
-   # cannot be used to pass user_id to /oauth2callback.
-   state_payload = base64.urlsafe_b64encode(
-       json.dumps({"user_id": user_id}).encode()
-   ).decode()
+   state_payload = create_oauth_state(user_id, db)
    authorization_url, _ = flow.authorization_url(
       access_type='offline',
       include_granted_scopes='true',
       state=state_payload,
    )
    return authorization_url
+
+
+def create_oauth_state(user_id: str, db: Session) -> str:
+    nonce = secrets.token_hex(16)
+    payload = json.dumps({
+        "user_id": user_id,
+        "nonce": nonce,
+        "exp": int(time.time()) + 600,
+    })
+    secret = os.getenv("SESSION_SECRET_KEY", "").encode()
+    sig = hmac.new(secret, payload.encode(), hashlib.sha256).hexdigest()
+    state_data = base64.urlsafe_b64encode(
+        f"{payload}:{sig}".encode()
+    ).decode()
+    db.add(OAuthNonce(nonce=nonce))
+    db.commit()
+    return state_data
 
 #Google OAuth認証情報読み込み
 def create_creds(token, db: Session, user_id: str):
