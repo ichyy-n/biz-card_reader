@@ -8,7 +8,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Request, FastAPI, Depends, HTTPException, Header
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 
 logging.basicConfig(
     level=logging.INFO,
@@ -238,7 +238,10 @@ def oauth2callback(request: Request, db: Session = Depends(get_db)):
         user.token = Fernet(key).encrypt(token.encode()).decode()
     db.commit()
 
-    return push_message(user_id, '連携が完了しました。画像を再送してください')
+    push_message(user_id, '連携が完了しました。画像を再送してください')
+    return HTMLResponse(
+        "<html><body><h2>認証が完了しました</h2><p>このページを閉じて、LINEに戻ってください。</p></body></html>"
+    )
 
 
 def _notify_admin_new_user(new_user_id: str):
@@ -246,10 +249,13 @@ def _notify_admin_new_user(new_user_id: str):
     try:
         admin_id = os.getenv("ADMIN_LINE_USER_ID")
         if admin_id:
+            base_url = os.getenv("RENDER_EXTERNAL_URL", "https://your-app.onrender.com").rstrip("/")
             push_message(
                 admin_id,
-                f"新規ユーザー {new_user_id} がBotにアクセスしました。"
-                f"\n/admin/users/{new_user_id}/approve で承認可"
+                f"新規ユーザー {new_user_id} がBotにアクセスしました。\n"
+                f"承認コマンド:\n"
+                f"curl -X POST {base_url}/admin/users/{new_user_id}/approve"
+                f" -H 'X-Admin-API-Key: '"
             )
     except Exception as e:
         logger.warning(f"Admin notification failed: {e}")
