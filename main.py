@@ -235,17 +235,15 @@ def oauth2callback(request: Request, db: Session = Depends(get_db)):
 
 
 def _notify_admin_new_user(new_user_id: str):
-    """Notify the first approved user (admin) about a new unapproved user."""
+    """Notify the admin about a new unapproved user."""
     try:
-        allowed = os.getenv("ALLOWED_LINE_USERS", "")
-        if allowed:
-            admin_id = allowed.split(",")[0].strip()
-            if admin_id:
-                push_message(
-                    admin_id,
-                    f"新規ユーザー {new_user_id} がBotにアクセスしました。"
-                    f"\n/admin/users/{new_user_id}/approve で承認可"
-                )
+        admin_id = os.getenv("ADMIN_LINE_USER_ID")
+        if admin_id:
+            push_message(
+                admin_id,
+                f"新規ユーザー {new_user_id} がBotにアクセスしました。"
+                f"\n/admin/users/{new_user_id}/approve で承認可"
+            )
     except Exception as e:
         logger.warning(f"Admin notification failed: {e}")
 
