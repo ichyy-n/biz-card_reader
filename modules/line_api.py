@@ -70,20 +70,14 @@ def get_line_events(body, signature):
     return events
 
 
-def get_user_id(events):
-       for event in events:
-        if isinstance(event, MessageEvent):
-            return event.source.user_id
-
-
-def event_handler(events, token, db, user_id: str):
-    for event in events:
-        if not isinstance(event, MessageEvent):
-            continue
-        if isinstance(event.message, TextMessageContent):
-            reply_message(event.reply_token, '名刺画像を送信してください')
-        if isinstance(event.message, ImageMessageContent):
-            image_handler(event, token, db, user_id)
+def handle_single_event(event, token, db, user_id: str):
+    """Process a single webhook event with the user's own context."""
+    if not isinstance(event, MessageEvent):
+        return
+    if isinstance(event.message, TextMessageContent):
+        reply_message(event.reply_token, '名刺画像を送信してください')
+    if isinstance(event.message, ImageMessageContent):
+        image_handler(event, token, db, user_id)
 
 
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB（提案9: 画像サイズ制限）
@@ -100,13 +94,15 @@ def image_handler(event, token, db, user_id: str):
             user.drive_folder_id = create_drive_folder(creds, user_id)
             db.commit()
         except Exception as e:
-            return push_message(user_id, f'Google Driveフォルダの作成に失敗しました：{e}')
+            logger.error(f'Google Driveフォルダの作成に失敗: {e}', exc_info=True)
+            return push_message(user_id, 'Google Driveフォルダの作成に失敗しました。再度お試しください。')
     if user.spreadsheet_id is None:
         try:
             user.spreadsheet_id = create_spreadsheet(creds, user_id)
             db.commit()
         except Exception as e:
-            return push_message(user_id, f'スプレッドシートの作成に失敗しました：{e}')
+            logger.error(f'スプレッドシートの作成に失敗: {e}', exc_info=True)
+            return push_message(user_id, 'スプレッドシートの作成に失敗しました。再度お試しください。')
 
     reply_message(event.reply_token, '画像を受け付けました')
 
@@ -114,7 +110,8 @@ def image_handler(event, token, db, user_id: str):
     try:
         image_content = line_bot_api_blob.get_message_content(message_id)
     except Exception as e:
-        return push_message(user_id, f'画像を取得できませんでした：{e}')
+        logger.error(f'画像の取得に失敗: {e}', exc_info=True)
+        return push_message(user_id, '画像を取得できませんでした。再度お試しください。')
 
     # サイズ制限チェック（提案9）
     if len(image_content) > MAX_IMAGE_SIZE:
@@ -123,18 +120,21 @@ def image_handler(event, token, db, user_id: str):
     try:
         bizcard_text = json.loads(read_image(image_content)) #文字列から辞書型に変換
     except Exception as e:
-        return push_message(user_id, f'文字の構造化に失敗しました：{e}')
+        logger.error(f'文字の構造化に失敗: {e}', exc_info=True)
+        return push_message(user_id, '文字の構造化に失敗しました。再度お試しください。')
     #画像をGoogle Driveへアップロード
     try:
         file_id = drive_upload(io.BytesIO(image_content), message_id, creds, user.drive_folder_id)
     except Exception as e:
-        return push_message(user_id, f'画像をGoogle Driveに保存できませんでした：{e}')
+        logger.error(f'画像のGoogle Drive保存に失敗: {e}', exc_info=True)
+        return push_message(user_id, '画像をGoogle Driveに保存できませんでした。再度お試しください。')
     #読み取った文字データとGoogle Driveの画像リンクをスプレッドシートへ登録
     try:
         sheets_update(bizcard_text, file_id, creds, user.spreadsheet_id)
         push_message(user_id, 'データの登録が終了しました')
     except Exception as e:
-        return push_message(user_id, f'Google spread sheetの更新に失敗しました：{e}')
+        logger.error(f'Google Spreadsheetの更新に失敗: {e}', exc_info=True)
+        return push_message(user_id, 'Google Spreadsheetの更新に失敗しました。再度お試しください。')
 
 
 
