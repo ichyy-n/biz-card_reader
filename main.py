@@ -65,6 +65,13 @@ async def lifespan(app: FastAPI):
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT FALSE NOT NULL"))
             added.append('is_approved')
+        # tokenカラムをnullableに変更（未承認ユーザーの仮レコード用）
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ALTER COLUMN token DROP NOT NULL"))
+        except Exception:
+            pass  # 既にnullableの場合はスキップ
+
         if added:
             logger.info(f"DBマイグレーション完了: カラム追加 {added}")
         else:
