@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI):
             added.append('spreadsheet_id')
         if 'is_approved' not in columns:
             with engine.begin() as conn:
-                conn.execute(text("ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT 0 NOT NULL"))
+                conn.execute(text("ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT FALSE NOT NULL"))
             added.append('is_approved')
         if added:
             logger.info(f"DBマイグレーション完了: カラム追加 {added}")
