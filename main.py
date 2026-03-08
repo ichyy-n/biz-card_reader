@@ -7,7 +7,7 @@ import time
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Request, FastAPI, Depends, HTTPException
+from fastapi import Request, FastAPI, Depends, HTTPException, Header
 from fastapi.responses import JSONResponse
 
 logging.basicConfig(
@@ -61,6 +61,10 @@ async def lifespan(app: FastAPI):
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE users ADD COLUMN spreadsheet_id VARCHAR"))
             added.append('spreadsheet_id')
+        if 'is_approved' not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT 0 NOT NULL"))
+            added.append('is_approved')
         if added:
             logger.info(f"DBマイグレーション完了: カラム追加 {added}")
         else:
@@ -91,6 +95,29 @@ async def lifespan(app: FastAPI):
                 logger.info(f"R02マイグレーション完了: {updated}件更新")
             else:
                 logger.info("R02マイグレーション: 対象レコードなし")
+        finally:
+            db.close()
+
+    # Migration from ALLOWED_LINE_USERS env var. Will be deprecated.
+    allowed_users_env = os.getenv("ALLOWED_LINE_USERS", "")
+    if allowed_users_env:
+        allowed_ids = [uid.strip() for uid in allowed_users_env.split(",") if uid.strip()]
+        db = sessionLocal()
+        try:
+            migrated = 0
+            for uid in allowed_ids:
+                user = db.query(User).filter_by(line_user_id=uid).first()
+                if user and not user.is_approved:
+                    user.is_approved = True
+                    migrated += 1
+                elif not user:
+                    db.add(User(line_user_id=uid, is_approved=True, token=None))
+                    migrated += 1
+            if migrated > 0:
+                db.commit()
+                logger.info(f"ALLOWED_LINE_USERSマイグレーション完了: {migrated}件承認")
+            else:
+                logger.info("ALLOWED_LINE_USERSマイグレーション: 対象なし")
         finally:
             db.close()
 
@@ -128,18 +155,26 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
 
     user_id = get_user_id(events)  # ローカル変数として保持（提案2: global排除）
 
-    ALLOWED_USERS = os.getenv("ALLOWED_LINE_USERS", "").split(",")
-    if user_id not in ALLOWED_USERS:
+    # DB-based user approval check
+    user = db.query(User).filter_by(line_user_id=user_id).first()
+    if not user:
+        # New unknown user: create unapproved record, notify admin, silent return
+        db.add(User(line_user_id=user_id, is_approved=False, token=None))
+        db.commit()
+        _notify_admin_new_user(user_id)
         return 'OK'
 
-    #tokenがないならGoogle認証用urlを送信
-    if db.get(User, user_id) is None:
-        auth_url = create_authurl(request, user_id, db)  # pass user_id to embed in OAuth state
+    if not user.is_approved:
+        return 'OK'
+
+    # Approved user without token → send OAuth URL
+    if user.token is None:
+        auth_url = create_authurl(request, user_id, db)
         return push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
-    else:
-        user = db.get(User, user_id)
-        token = Fernet(key).decrypt(user.token.encode()).decode()
-        event_handler(events, token, db, user_id)
+
+    # Approved user with token → normal processing
+    token = Fernet(key).decrypt(user.token.encode()).decode()
+    event_handler(events, token, db, user_id)
 
     return 'OK'
 
@@ -199,9 +234,61 @@ def oauth2callback(request: Request, db: Session = Depends(get_db)):
     return push_message(user_id, '連携が完了しました。画像を再送してください')
 
 
+def _notify_admin_new_user(new_user_id: str):
+    """Notify the admin about a new unapproved user."""
+    try:
+        admin_id = os.getenv("ADMIN_LINE_USER_ID")
+        if admin_id:
+            push_message(
+                admin_id,
+                f"新規ユーザー {new_user_id} がBotにアクセスしました。"
+                f"\n/admin/users/{new_user_id}/approve で承認可"
+            )
+    except Exception as e:
+        logger.warning(f"Admin notification failed: {e}")
+
+
+def verify_admin(x_admin_api_key: str = Header(None)):
+    if x_admin_api_key != os.getenv("ADMIN_API_KEY"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+@app.post("/admin/users/{line_user_id}/approve", dependencies=[Depends(verify_admin)])
+def approve_user(line_user_id: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(line_user_id=line_user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_approved = True
+    db.commit()
+    return {"status": "approved", "line_user_id": line_user_id}
+
+
+@app.post("/admin/users/{line_user_id}/revoke", dependencies=[Depends(verify_admin)])
+def revoke_user(line_user_id: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(line_user_id=line_user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_approved = False
+    db.commit()
+    return {"status": "revoked", "line_user_id": line_user_id}
+
+
+@app.get("/admin/users", dependencies=[Depends(verify_admin)])
+def list_users(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    return [
+        {
+            "line_user_id": u.line_user_id,
+            "is_approved": u.is_approved,
+            "has_token": u.token is not None,
+        }
+        for u in users
+    ]
+
+
 @app.get("/")
 def root():
-    return 'OK'   
+    return 'OK'
 
 
 
