@@ -22,3 +22,10 @@ class User(Base):
     spreadsheet_id = Column(String, nullable=True)     # per-user Google Spreadsheet (R02)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class OAuthNonce(Base):
+    __tablename__ = "oauth_nonces"
+    id = Column(Integer, primary_key=True)
+    nonce = Column(String, unique=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
