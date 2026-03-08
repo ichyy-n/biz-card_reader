@@ -101,7 +101,12 @@ app = FastAPI(lifespan=lifespan)
 session_secret = os.getenv('SESSION_SECRET_KEY')
 if not session_secret:
     raise RuntimeError("SESSION_SECRET_KEY environment variable not set")
-app.add_middleware(SessionMiddleware, secret_key=session_secret)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=session_secret,
+    https_only=True,
+    same_site="lax",
+)
 
 def get_db():
     db = sessionLocal()
@@ -113,7 +118,9 @@ def get_db():
 
 @app.post("/callback")
 async def handle_callback(request: Request, db: Session = Depends(get_db)):
-    signature = request.headers['X-Line-Signature']
+    signature = request.headers.get('X-Line-Signature')
+    if not signature:
+        return JSONResponse({"error": "Missing signature"}, status_code=400)
     # get request body as text
     body = await request.body()
     body = body.decode()
