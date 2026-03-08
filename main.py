@@ -25,8 +25,7 @@ from dotenv import load_dotenv
 from modules.line_api import(
     push_message,
     get_line_events,
-    get_user_id,
-    event_handler,
+    handle_single_event,
 )
 from modules.google_api import(
     create_authurl,
@@ -160,28 +159,31 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
     body = body.decode()
     events = get_line_events(body, signature)
 
-    user_id = get_user_id(events)  # ローカル変数として保持（提案2: global排除）
+    for event in events:
+        # イベントごとにuser_id取得
+        if hasattr(event, 'source') and hasattr(event.source, 'user_id'):
+            user_id = event.source.user_id
+        else:
+            continue
 
-    # DB-based user approval check
-    user = db.query(User).filter_by(line_user_id=user_id).first()
-    if not user:
-        # New unknown user: create unapproved record, notify admin, silent return
-        db.add(User(line_user_id=user_id, is_approved=False, token=None))
-        db.commit()
-        _notify_admin_new_user(user_id)
-        return 'OK'
-
-    if not user.is_approved:
-        return 'OK'
-
-    # Approved user without token → send OAuth URL
-    if user.token is None:
-        auth_url = create_authurl(request, user_id, db)
-        return push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
-
-    # Approved user with token → normal processing
-    token = Fernet(key).decrypt(user.token.encode()).decode()
-    event_handler(events, token, db, user_id)
+        # DB認可チェック
+        user = db.query(User).filter_by(line_user_id=user_id).first()
+        if not user:
+            # 未登録: 仮レコード作成 + 管理者通知
+            db.add(User(line_user_id=user_id, is_approved=False, token=None))
+            db.commit()
+            _notify_admin_new_user(user_id)
+            continue
+        if not user.is_approved:
+            continue  # 未承認: 無応答
+        if user.token is None:
+            # 未認証: OAuth URL送信
+            auth_url = create_authurl(request, user_id, db)
+            push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
+            continue
+        # 認証済み: イベント処理
+        token = Fernet(key).decrypt(user.token.encode()).decode()
+        handle_single_event(event, token, db, user_id)
 
     return 'OK'
 
