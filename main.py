@@ -7,7 +7,7 @@ import time
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Request, FastAPI, Depends, HTTPException, Header
+from fastapi import Request, FastAPI, BackgroundTasks, Depends, HTTPException, Header
 from fastapi.responses import JSONResponse, HTMLResponse
 
 logging.basicConfig(
@@ -150,7 +150,7 @@ def get_db():
 
 
 @app.post("/callback")
-async def handle_callback(request: Request, db: Session = Depends(get_db)):
+async def handle_callback(request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     signature = request.headers.get('X-Line-Signature')
     if not signature:
         return JSONResponse({"error": "Missing signature"}, status_code=400)
@@ -181,11 +181,22 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
             auth_url = create_authurl(request, user_id, db)
             push_message(user_id, f'以下のURLにアクセスしてGoogleアカウントの連携を行ってください:\n{auth_url}')
             continue
-        # 認証済み: イベント処理
+        # 認証済み: バックグラウンドでイベント処理（即座に200 OK返却）
         token = Fernet(key).decrypt(user.token.encode()).decode()
-        handle_single_event(event, token, db, user_id)
+        background_tasks.add_task(_process_event_bg, event, token, user_id)
 
     return 'OK'
+
+
+def _process_event_bg(event, token: str, user_id: str):
+    """バックグラウンドで実行されるイベント処理。独自DBセッションを使用。"""
+    db = sessionLocal()
+    try:
+        handle_single_event(event, token, db, user_id)
+    except Exception as e:
+        logger.error(f'バックグラウンド処理中にエラー発生 (user={user_id}): {e}', exc_info=True)
+    finally:
+        db.close()
 
 
 def verify_oauth_state(state_param: str, db: Session) -> str:
