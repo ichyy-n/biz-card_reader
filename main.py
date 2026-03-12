@@ -183,7 +183,10 @@ async def handle_callback(request: Request, db: Session = Depends(get_db)):
             continue
         # 認証済み: イベント処理
         token = Fernet(key).decrypt(user.token.encode()).decode()
-        handle_single_event(event, token, db, user_id)
+        try:
+            handle_single_event(event, token, db, user_id)
+        except Exception as e:
+            logger.error(f'イベント処理中にエラー発生 (user={user_id}): {e}', exc_info=True)
 
     return 'OK'
 

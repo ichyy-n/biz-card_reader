@@ -118,10 +118,13 @@ def image_handler(event, token, db, user_id: str):
         return push_message(user_id, f'画像サイズが大きすぎます（上限5MB）')
     #gpt4による文字読み取りと構造化
     try:
-        bizcard_text = json.loads(read_image(image_content)) #文字列から辞書型に変換
+        raw_result = read_image(image_content)
+        if raw_result is None:
+            return push_message(user_id, '名刺画像を送信してください。この画像からは名刺情報を読み取れませんでした。')
+        bizcard_text = json.loads(raw_result) #文字列から辞書型に変換
     except Exception as e:
         logger.error(f'文字の構造化に失敗: {e}', exc_info=True)
-        return push_message(user_id, '文字の構造化に失敗しました。再度お試しください。')
+        return push_message(user_id, '画像の処理に失敗しました。再度お試しください。')
     #画像をGoogle Driveへアップロード
     try:
         file_id = drive_upload(io.BytesIO(image_content), message_id, creds, user.drive_folder_id)
